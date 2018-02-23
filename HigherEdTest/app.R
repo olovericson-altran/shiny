@@ -24,61 +24,12 @@ con <- pool::dbPool(odbc::odbc(),
 
 countries <- readr::read_rds("country_centroids")
 schools <- tbl(con, "content_archive_st_het_schools") %>% select(SchoolId = instance_id, name = f_title) %>% collect()
+applications <- tbl(con, "content_archive_st_het_adverts") %>% select(ApplicationId = instance_id, name = f_title) %>% collect()
 
 
 ui <- fluidPage(
-  titlePanel("HigherEd dashboard", windowTitle = "HigherEd"),
-  
-  fluidRow(
-    
-    column(
-      2,
-      wellPanel(
-        h4("Impressions"),
-        h5(textOutput("impressions"))
-      )
-    ),
-    
-    column(
-      2,
-      wellPanel(
-        h4("Page views"),
-        h5(textOutput("page_views"))
-      )
-    ),
-    
-    column(
-      2,
-      wellPanel(
-        h4("Position views"),
-        h5(textOutput("position_views"))
-      )
-    ),
-    
-    column(
-      2,
-      wellPanel(
-        h4("Application clicks"),
-        h5(textOutput("app_clicks"))
-      )
-    ),
-    
-    column(
-      4,
-      dateRangeInput("date", "Date", "2017-02-22", "2018-02-22")
-    )
-  ),
-  
-  fluidRow(
-    column(8, wellPanel(h4("Visits by Country"),leafletOutput("map",  height = 600))),
-    
-    column(
-      4,
-      wellPanel(
-        h4("Activity by School"),
-        DT::dataTableOutput("school_activity")
-      )
-    )
+  tabsetPanel(
+    engagement_dashboard_ui()
   )
 )
 
@@ -104,19 +55,19 @@ server <- function(input, output) {
   })
   
   output$impressions <- renderText({
-    fact_events()$impressions
+    fact_events()$impressions %>% prettyNum(scientific=FALSE, big.mark=",")
    })
   
   output$page_views <- renderText({
-    fact_visits()$page_views
+    fact_visits()$page_views %>% prettyNum(scientific=FALSE, big.mark=",")
   })
   
   output$position_views <- renderText({
-    fact_visits()$position_views
+    fact_visits()$position_views %>% prettyNum(scientific=FALSE, big.mark=",")
   })
   
   output$app_clicks <- renderText({
-    fact_events()$app_clicks
+    fact_events()$app_clicks %>% prettyNum(scientific=FALSE, big.mark=",")
   })
   
   output$map <- renderLeaflet({
@@ -139,7 +90,6 @@ server <- function(input, output) {
   })
   
   output$school_activity <- DT::renderDataTable({
-    
     school_events <- date_filtered_query(
       "FactEvents",
       input$date,
@@ -154,7 +104,35 @@ server <- function(input, output) {
       select(Events, `School Name` = name) %>% 
       arrange(-Events)
     
-    DT::datatable(school_activity, rownames = FALSE)
+    # a custom table with both header and footer
+    sketch = htmltools::withTags(table(
+      DT::tableHeader(school_activity)
+    ))
+    
+    DT::datatable(school_activity,  container = sketch, options = list(pageLength = 5, dom = 'tip'), rownames = FALSE, selection = "none")
+  })
+  
+  output$application_activity <- DT::renderDataTable({
+    application_events <- date_filtered_query(
+      "FactEvents",
+      input$date,
+      "ApplicationId,
+      sum([Events]) Events",
+      where = "EventName = 'ApplicationClick'",
+      group_by = "ApplicationId"
+    )
+    
+    application_activity <- application_events %>% 
+      inner_join(applications, by = "ApplicationId") %>% 
+      select(Events, `Application Name` = name) %>% 
+      arrange(-Events)
+    
+    # a custom table with both header and footer
+    sketch = htmltools::withTags(table(
+      DT::tableHeader(application_activity)
+    ))
+    
+    DT::datatable(application_activity,  container = sketch, options = list(pageLength = 5, dom = 'tip'), rownames = FALSE, selection = "none")
   })
 }
 
