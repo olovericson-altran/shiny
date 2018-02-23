@@ -80,7 +80,7 @@ ui <- fluidPage(
       "When the students are engaging",
       wellPanel(
         h4("Unique Student Visits and Application Click by Date"),
-        highchartOutput("unique_student_clicks", height = 900)
+        highchartOutput("unique_student_clicks", height = 850)
       )
     )
   )
