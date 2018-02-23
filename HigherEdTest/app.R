@@ -57,9 +57,25 @@ server <- function(input, output) {
       GROUP BY datekey"
     )
     
-    unique_visits %>% 
+    application_click <- dbGetQuery(
+      con, 
+      "SELECT      
+      datekey date_key,
+      sum(Events) app_click     
+      FROM [dbo].[FactEvents]
+      WHERE EventName = 'PositionImpression'
+      GROUP BY datekey"
+    )
+    
+    scaling_coeff = mean(application_click$app_click)/mean(unique_visits$unique_student_visits)
+    
+    application_click %>% 
+      inner_join(unique_visits, by = "date_key") %>% 
       mutate(date = ymd(date_key)) %>% 
-      ggplot(mapping = aes(x = date, y = unique_student_visits)) + geom_bar(stat="identity", na.rm = TRUE, fill = "lightblue")
+      ggplot(mapping = aes(x = date)) + 
+      geom_bar(mapping = aes(y = unique_student_visits * scaling_coeff), stat="identity", na.rm = TRUE, color = "lightblue", fill = "lightblue") +
+      geom_line(mapping = aes(y = app_click), size = 1) +
+      scale_y_continuous(sec.axis = sec_axis(~./scaling_coeff, name = "Unique student visits"), name = "Application clicks")
   })
 }
 
