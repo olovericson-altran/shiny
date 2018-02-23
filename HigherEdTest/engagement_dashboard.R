@@ -38,7 +38,10 @@ engagement_dashboard_ui <- function(){
       
       column(
         4,
-        dateRangeInput("date", "Date", "2017-02-22", "2018-02-22")
+        wellPanel(
+          sliderInput("date", "Date", as.Date("2017-02-22"), as.Date("2018-02-22"), value = c(as.Date("2017-05-22"), as.Date("2018-02-22")))
+        )
+        #dateRangeInput("date", "Date", "2017-02-22", "2018-02-22")
       )
     ),
     

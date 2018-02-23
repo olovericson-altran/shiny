@@ -33,6 +33,46 @@ applications <- tbl(con, "content_archive_st_het_adverts") %>% select(Applicatio
 
 
 ui <- fluidPage(
+  tags$style(HTML("
+    .h5, h5 {
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    body {
+      background-color: #9c143b;
+    }
+
+    .well {
+      border: 1px solid #555;
+      border-radius: 7px;
+    }
+
+    .nav-tabs>li.active>a, .nav-tabs>li.active>a:focus, .nav-tabs>li.active>a:hover {
+      color: #fcf8e3;
+      background-color: #333;
+      font-weight: bold;
+    }
+
+    .nav-tabs>li>a {
+      background-color: #f5f5f5;
+      font-weight: bold;
+      color: #a94442;
+    }
+
+    .irs-bar {
+      background: #9c143b;
+      border-top: 1px solid #9c143b;
+      border-bottom: 1px solid #9c143b;
+    }
+
+    .irs-from, .irs-to, .irs-single {
+      background: #9c143b;
+    }
+    ")),
+  
+  titlePanel(img(src="http://www.highered.global/wp-content/uploads/assets/highered-white.svg", height=60), windowTitle = "HigherEd"),
+  
   tabsetPanel(
     engagement_dashboard_ui(),
     
@@ -40,7 +80,7 @@ ui <- fluidPage(
       "When the students are engaging",
       wellPanel(
         h4("Unique Student Visits and Application Click by Date"),
-        highchartOutput("unique_student_clicks", height = 950)
+        highchartOutput("unique_student_clicks", height = 900)
       )
     )
   )
@@ -75,7 +115,7 @@ server <- function(input, output) {
       mutate(date = ymd(date_key))
     
     highchart(type = "stock") %>% 
-      hc_add_series(xts(x = uc_student_df$unique_student_visits, order.by = uc_student_df$date), type = "column", name="Unique visitors", color = "#B71C1C") %>% 
+      hc_add_series(xts(x = uc_student_df$unique_student_visits, order.by = uc_student_df$date), type = "column", name="Unique visitors", color = "#9c143b") %>% 
       hc_add_series(xts(x = uc_student_df$app_click, order.by = uc_student_df$date), name="Application clicks")
       
   })
