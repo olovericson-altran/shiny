@@ -23,8 +23,7 @@ con <- pool::dbPool(odbc::odbc(),
                     PWD = "SJhg8ws72db=!+So")
 
 countries <- readr::read_rds("country_centroids")
-
-#schools <- tbl(con, "DimSchools") %>% colle
+schools <- tbl(con, "content_archive_st_het_schools") %>% select(SchoolId = instance_id, name = f_title) %>% collect()
 
 
 ui <- fluidPage(
@@ -76,8 +75,8 @@ ui <- fluidPage(
     column(
       4,
       wellPanel(
-        h4("Activity by School")
-        
+        h4("Activity by School"),
+        DT::dataTableOutput("school_activity")
       )
     )
   )
@@ -87,28 +86,20 @@ ui <- fluidPage(
 server <- function(input, output) {
   
   fact_visits <- reactive({
-      dbGetQuery(
-        con, 
-        paste0(
-          "SELECT 
-          SUM(CASE WHEN APPLICATIONID!=0 THEN Visits ELSE 0 END) position_views,
-          SUM(Visits) page_views
-          FROM FactVisits
-          WHERE datekey>=", to_datekey(input$date[1]), " AND datekey<=", to_datekey(input$date[2])
-        )
-      )
+    date_filtered_query(
+      "FactVisits",
+      input$date,
+      "SUM(CASE WHEN APPLICATIONID!=0 THEN Visits ELSE 0 END) position_views,
+       SUM(Visits) page_views"
+    )
   })
   
   fact_events <- reactive({
-    dbGetQuery(
-      con, 
-      paste0(
-        "SELECT 
-        SUM(CASE WHEN EventName='ApplicationClick' THEN Events ELSE 0 END) app_clicks,
-        SUM(Events) impressions
-        FROM FactEvents
-        WHERE datekey>=", to_datekey(input$date[1]), " AND datekey<=", to_datekey(input$date[2])
-      )
+    date_filtered_query(
+      "FactEvents",
+      input$date,
+      "SUM(CASE WHEN EventName='ApplicationClick' THEN Events ELSE 0 END) app_clicks,
+       SUM(Events) impressions"
     )
   })
   
@@ -117,28 +108,24 @@ server <- function(input, output) {
    })
   
   output$page_views <- renderText({
-    fact_visits()[["page_views"]]
+    fact_visits()$page_views
   })
   
   output$position_views <- renderText({
-    fact_visits()[["position_views"]]
+    fact_visits()$position_views
   })
   
   output$app_clicks <- renderText({
-    fact_events()[["app_clicks"]]
+    fact_events()$app_clicks
   })
   
   output$map <- renderLeaflet({
-    country_events <- dbGetQuery(
-      con, 
-      paste0(
-        "SELECT      
-        [SchoolCountryName] Country,
-        sum([Events]) Events     
-        FROM [dbo].[FactEvents]
-        WHERE datekey>=", to_datekey(input$date[1]), " AND datekey<=", to_datekey(input$date[2]),
-        " GROUP BY SchoolCountryName"
-      )
+    country_events <- date_filtered_query(
+      "FactEvents",
+      input$date,
+      "[SchoolCountryName] Country,
+       sum([Events]) Events",
+      group_by = "SchoolCountryName"
     )
     
     country_events <- country_events %>% 
@@ -152,7 +139,22 @@ server <- function(input, output) {
   })
   
   output$school_activity <- DT::renderDataTable({
-    DT::datatable()
+    
+    school_events <- date_filtered_query(
+      "FactEvents",
+      input$date,
+      "[SchoolId],
+       sum([Events]) Events",
+      where = "EventName = 'ApplicationClick'",
+      group_by = "SchoolId"
+    )
+    
+    school_activity <- school_events %>% 
+      inner_join(schools, by = "SchoolId") %>% 
+      select(Events, `School Name` = name) %>% 
+      arrange(-Events)
+    
+    DT::datatable(school_activity, rownames = FALSE)
   })
 }
 
