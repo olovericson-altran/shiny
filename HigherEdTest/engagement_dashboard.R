@@ -60,9 +60,10 @@ engagement_dashboard_ui <- function(){
   )
 }
 
-engagement_dashboard_server <- function(input, output, countries, schools, applications) {
+engagement_dashboard_server <- function(con, input, output, countries, schools, applications) {
   fact_visits <- reactive({
     date_filtered_query(
+      con,
       "FactVisits",
       input$date,
       "SUM(CASE WHEN APPLICATIONID!=0 THEN Visits ELSE 0 END) position_views,
@@ -72,6 +73,7 @@ engagement_dashboard_server <- function(input, output, countries, schools, appli
   
   fact_events <- reactive({
     date_filtered_query(
+      con,
       "FactEvents",
       input$date,
       "SUM(CASE WHEN EventName='ApplicationClick' THEN Events ELSE 0 END) app_clicks,
@@ -97,6 +99,7 @@ engagement_dashboard_server <- function(input, output, countries, schools, appli
   
   output$map <- renderLeaflet({
     country_events <- date_filtered_query(
+      con,
       "FactEvents",
       input$date,
       "[SchoolCountryName] Country,
@@ -116,6 +119,7 @@ engagement_dashboard_server <- function(input, output, countries, schools, appli
   
   output$school_activity <- DT::renderDataTable({
     school_events <- date_filtered_query(
+      con,
       "FactEvents",
       input$date,
       "[SchoolId],
@@ -139,6 +143,7 @@ engagement_dashboard_server <- function(input, output, countries, schools, appli
   
   output$application_activity <- DT::renderDataTable({
     application_events <- date_filtered_query(
+      con,
       "FactEvents",
       input$date,
       "ApplicationId,

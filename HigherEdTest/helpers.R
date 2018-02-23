@@ -2,7 +2,7 @@ to_datekey <- function(d){
   str_replace_all(d, "-", "")
 }
 
-date_filtered_query <- function(table, date_range, aggregations, where = NULL, group_by = NULL) {
+date_filtered_query <- function(con, table, date_range, aggregations, where = NULL, group_by = NULL) {
   query <- paste(
     "SELECT",
     aggregations,

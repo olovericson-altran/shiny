@@ -13,6 +13,9 @@ library(dbplyr)
 library(stringr)
 library(DBI)
 library(lubridate)
+library(highcharter)
+library(xts)
+library(leaflet)
 
 source("engagement_dashboard.R")
 source("helpers.R")
@@ -37,7 +40,7 @@ ui <- fluidPage(
       "When the students are engaging",
       wellPanel(
         h4("Unique Student Visits and Application Click by Date"),
-        plotOutput("unique_student_clicks")
+        highchartOutput("unique_student_clicks", height = 950)
       )
     )
   )
@@ -45,9 +48,9 @@ ui <- fluidPage(
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
-  engagement_dashboard_server(input, output, countries, schools, applications)
+  engagement_dashboard_server(con, input, output, countries, schools, applications)
   
-  output$unique_student_clicks <- renderPlot({
+  output$unique_student_clicks <- renderHighchart({
     unique_visits <- dbGetQuery(
       con, 
       "SELECT      
@@ -63,19 +66,18 @@ server <- function(input, output) {
       datekey date_key,
       sum(Events) app_click     
       FROM [dbo].[FactEvents]
-      WHERE EventName = 'PositionImpression'
+      WHERE EventName = 'ApplicationClick'
       GROUP BY datekey"
     )
     
-    scaling_coeff = mean(application_click$app_click)/mean(unique_visits$unique_student_visits)
-    
-    application_click %>% 
+    uc_student_df <- application_click %>% 
       inner_join(unique_visits, by = "date_key") %>% 
-      mutate(date = ymd(date_key)) %>% 
-      ggplot(mapping = aes(x = date)) + 
-      geom_bar(mapping = aes(y = unique_student_visits * scaling_coeff), stat="identity", na.rm = TRUE, color = "lightblue", fill = "lightblue") +
-      geom_line(mapping = aes(y = app_click), size = 1) +
-      scale_y_continuous(sec.axis = sec_axis(~./scaling_coeff, name = "Unique student visits"), name = "Application clicks")
+      mutate(date = ymd(date_key))
+    
+    highchart(type = "stock") %>% 
+      hc_add_series(xts(x = uc_student_df$unique_student_visits, order.by = uc_student_df$date), type = "column", name="Unique visitors", color = "#B71C1C") %>% 
+      hc_add_series(xts(x = uc_student_df$app_click, order.by = uc_student_df$date), name="Application clicks")
+      
   })
 }
 
